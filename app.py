@@ -186,7 +186,7 @@ def tela_selecionar_tabela():
 def tela_historico_carrinhos():
     st.header("Histórico de Carrinhos Fechados")
 
-    carrinho_historico = pd.read_sql_query("SELECT * FROM carrinhos", conn)
+    carrinho_historico = pd.read_sql_query("SELECT id, descricao, quantidade, total, data FROM carrinhos", conn)
     st.write(carrinho_historico)
     
     selected_carrinho = st.selectbox("Selecione um carrinho para ver os itens", carrinho_historico['id'] if not carrinho_historico.empty else [])
