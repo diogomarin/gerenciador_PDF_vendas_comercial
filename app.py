@@ -34,7 +34,6 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             descricao TEXT,
             quantidade INTEGER,
-            preco REAL,
             total REAL,
             data TEXT
         )
@@ -69,9 +68,9 @@ def save_table_to_db(conn, df, apelido, cliente, referencia):
 def save_carrinho_to_db(conn, carrinho):
     c = conn.cursor()
     c.execute('''
-        INSERT INTO carrinhos (descricao, quantidade, preco, total, data)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (carrinho['descricao'], carrinho['quantidade'], carrinho['preco'], carrinho['total'], carrinho['data']))
+        INSERT INTO carrinhos (descricao, quantidade, total, data)
+        VALUES (?, ?, ?, ?)
+    ''', (carrinho['descricao'], carrinho['quantidade'], carrinho['total'], carrinho['data']))
     carrinho_id = c.lastrowid
     conn.commit()
     return carrinho_id
@@ -174,7 +173,7 @@ def tela_selecionar_tabela():
         
         if st.button("Fechar Carrinho"):
             if carrinho_id is None:
-                carrinho_id = save_carrinho_to_db(conn, {'descricao': 'Carrinho de Itens', 'quantidade': len(carrinho), 'preco': total_geral, 'total': total_geral, 'data': datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+                carrinho_id = save_carrinho_to_db(conn, {'descricao': 'Carrinho de Itens', 'quantidade': len(carrinho), 'total': total_geral, 'data': datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
                 st.session_state['carrinho_id'] = carrinho_id
             add_items_to_carrinho(conn, carrinho_id, carrinho)
             st.success("Carrinho fechado e salvo no banco de dados com sucesso!")
@@ -191,7 +190,7 @@ def tela_historico_carrinhos():
     
     selected_carrinho = st.selectbox("Selecione um carrinho para ver os itens", carrinho_historico['id'] if not carrinho_historico.empty else [])
     if selected_carrinho:
-        itens_carrinho = pd.read_sql_query(f"SELECT * FROM carrinho_registros WHERE carrinho_id = {selected_carrinho}", conn)
+        itens_carrinho = pd.read_sql_query(f"SELECT descricao, quantidade, preco, total FROM carrinho_registros WHERE carrinho_id = {selected_carrinho}", conn)
         st.write(itens_carrinho)
 
 # Inicialização do banco de dados
