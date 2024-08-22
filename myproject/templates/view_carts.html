@@ -24,35 +24,97 @@
     </form>
 
     <!-- Tabela de Carrinhos Salvos -->
-    <table>
-        <thead>
-            <tr>
-                <th>ID do Carrinho</th>
-                <th>Apelido</th>
-                <th>Itens</th>
-                <th>Tabela de Referência</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for carrinho in carrinhos %}
-            <tr>
-                <td>{{ carrinho.id }}</td>
-                <td>{{ carrinho.apelido }}</td>
-                <td>
-                    <ul>
-                        {% for item in carrinho.itens %}
-                        <li>{{ item.descricao }} - Preço: {{ item.preco }}</li>
-                        {% endfor %}
-                    </ul>
-                </td>
-                <td>{{ carrinho.apelido_importacao }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <form id="sendCartForm" method="POST" action="{{ url_for('send_cart') }}">
+        <table>
+            <thead>
+                <tr>
+                    <th>Selecionar</th>
+                    <th>ID do Carrinho</th>
+                    <th>Apelido</th>
+                    <th>Itens</th>
+                    <th>Total</th>
+                    <th>Tabela de Referência</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for carrinho in carrinhos %}
+                <tr>
+                    <td><input type="checkbox" name="selected_carts" value="{{ carrinho.id }}"></td>
+                    <td>{{ carrinho.id }}</td>
+                    <td>{{ carrinho.apelido }}</td>
+                    <td>
+                        <ul>
+                            {% for item in carrinho.itens %}
+                            <li>{{ item.descricao }} - Preço: {{ item.preco }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td>{{ carrinho.total }}</td>
+                    <td>{{ carrinho.apelido_importacao }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Seção para gerar a mensagem -->
+        <h2>Gerar Mensagem para WhatsApp</h2>
+        <label for="nome_cliente">Nome do Cliente:</label>
+        <input type="text" id="nome_cliente" name="nome_cliente" required>
+        <button type="button" onclick="gerarMensagem()">Gerar Mensagem</button>
+    </form>
+
+    <!-- Área para exibir a mensagem gerada -->
+    <div id="mensagemGeradaContainer" style="display: none; margin-top: 20px;">
+        <h2>Mensagem Gerada</h2>
+        <textarea id="mensagemGerada" rows="10" cols="70" readonly></textarea>
+        <br>
+        <button onclick="copiarMensagem()">Copiar Mensagem</button>
+    </div>
+
+    <br>
 
     <a href="{{ url_for('index') }}"><button>Voltar para Início</button></a>
 
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <script>
+    function gerarMensagem() {
+        var nomeCliente = document.getElementById('nome_cliente').value;
+        var carrinhosSelecionados = document.querySelectorAll('input[name="selected_carts"]:checked');
+        var mensagens = '';
+
+        if (carrinhosSelecionados.length === 0 || !nomeCliente) {
+            alert("SELECIONE PELO MENOS UM CARRINHO E INSIRA O NOME DO CLIENTE.");
+            return;
+        }
+
+        carrinhosSelecionados.forEach(function(carrinho) {
+            var itens = carrinho.closest('tr').querySelectorAll('li');
+            var itensTexto = '';
+            itens.forEach(function(item) {
+                itensTexto += item.innerText.toUpperCase() + "\n";
+            });
+            var total = carrinho.closest('tr').querySelector('td:nth-child(5)').innerText.toUpperCase();
+            var mensagem = `OLÁ ${nomeCliente.toUpperCase()},\nAQUI ESTÃO OS ITENS DO SEU CARRINHO:\n${itensTexto}TOTAL: ${total}\n\n`;
+
+            mensagens += mensagem;
+        });
+
+        document.getElementById('mensagemGerada').value = mensagens;
+        document.getElementById('mensagemGeradaContainer').style.display = "block";
+    }
+
+    function copiarMensagem() {
+        var mensagem = document.getElementById('mensagemGerada').value;
+        navigator.clipboard.writeText(mensagem).then(() => {
+            alert("MENSAGEM COPIADA!");
+            fecharMensagemGerada();
+        });
+    }
+
+    function fecharMensagemGerada() {
+        document.getElementById('mensagemGeradaContainer').style.display = "none";
+        document.getElementById('nome_cliente').value = '';  // Limpar o nome do cliente após copiar a mensagem
+    }
+    </script>
+
 </body>
 </html>

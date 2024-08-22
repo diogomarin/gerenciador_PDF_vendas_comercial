@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 # Inicializa o SQLAlchemy
 db = SQLAlchemy()
@@ -32,6 +33,10 @@ class Carrinho(db.Model):
     apelido = db.Column(db.String(50), nullable=False)
     apelido_importacao = db.Column(db.String(50), nullable=False)
     itens = db.relationship('ItemCarrinho', backref='carrinho', lazy=True)
+
+    @property
+    def total(self):
+        return sum(item.preco for item in self.itens)
 
 # Itens dentro do carrinho
 class ItemCarrinho(db.Model):

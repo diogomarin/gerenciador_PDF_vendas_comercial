@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify, redirect, url_for
+from flask import render_template, request, jsonify, redirect, url_for, flash
 from app import app, db
 from models import PDFData, Importacao, Carrinho, ItemCarrinho
 import pdfplumber
@@ -131,11 +131,8 @@ def save_cart():
     if not cart_items:
         return render_template('select_table.html', data=[], importacao=None, error="Nenhum item no carrinho para salvar.")
     
-    if not apelido_importacao:
-        return render_template('select_table.html', data=[], importacao=None, error="Apelido da importação está faltando.")
-    
     cart_items = json.loads(cart_items)
-    
+
     # Cria um novo carrinho com o apelido e o apelido da importação
     carrinho = Carrinho(apelido=apelido, apelido_importacao=apelido_importacao)
     db.session.add(carrinho)
@@ -152,7 +149,7 @@ def save_cart():
     
     db.session.commit()
 
-    return redirect(url_for('view_carts'))
+    return redirect(url_for('index'))
 
 # Rota para visualizar carrinhos salvos na página inicial
 @app.route('/view_carts')
@@ -167,6 +164,35 @@ def view_carts():
     importacoes = Importacao.query.all()
     
     return render_template('view_carts.html', carrinhos=carrinhos, importacoes=importacoes)
+
+@app.route('/send_cart', methods=['POST'])
+def send_cart():
+    selected_carts = request.form.getlist('selected_carts')
+    nome_cliente = request.form.get('nome_cliente')
+    venda_realizada = request.form.get('venda_realizada') == 'on'
+
+    if not selected_carts or not nome_cliente:
+        flash("Você deve selecionar um carrinho e fornecer o nome do cliente.", "error")
+        return redirect(url_for('view_carts'))
+
+    # Gera a mensagem personalizada
+    mensagens = []
+    for cart_id in selected_carts:
+        carrinho = Carrinho.query.get(cart_id)
+        itens_mensagem = "\n".join([f"{item.descricao}: R${item.preco}" for item in carrinho.itens])
+        mensagem = (
+            f"Olá {nome_cliente},\n"
+            f"Aqui estão os itens do seu carrinho:\n{itens_mensagem}\n"
+            f"Total: R${carrinho.total:.2f}\n"
+        )
+        mensagens.append(mensagem)
+
+        # Atualiza o carrinho com os detalhes do envio
+        carrinho.enviado_para = nome_cliente
+        carrinho.data_envio = datetime.utcnow()
+        db.session.commit()
+
+    return render_template('send_cart.html', mensagens=mensagens, nome_cliente=nome_cliente, venda_realizada=venda_realizada)
 
 # Rota para a página inicial, onde o usuário escolhe entre upload ou seleção de tabela
 @app.route('/')
