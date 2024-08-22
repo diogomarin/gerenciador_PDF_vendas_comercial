@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrinhos Salvos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Visualizar Carrinhos Salvos</h1>
+
+    <!-- Formulário para Filtrar Carrinhos por Tabela de Referência -->
+    <form method="GET" action="{{ url_for('view_carts') }}">
+        <label for="apelido_importacao">Filtrar por Tabela de Referência:</label>
+        <select id="apelido_importacao" name="apelido_importacao">
+            <option value="">-- Todas as Tabelas --</option>
+            {% for imp in importacoes %}
+            <option value="{{ imp.apelido }}" {% if request.args.get('apelido_importacao') == imp.apelido %}selected{% endif %}>
+                {{ imp.apelido }} - {{ imp.data_referencia }}
+            </option>
+            {% endfor %}
+        </select>
+        <button type="submit">Filtrar</button>
+    </form>
+
+    <!-- Tabela de Carrinhos Salvos -->
+    <table>
+        <thead>
+            <tr>
+                <th>ID do Carrinho</th>
+                <th>Apelido</th>
+                <th>Itens</th>
+                <th>Tabela de Referência</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for carrinho in carrinhos %}
+            <tr>
+                <td>{{ carrinho.id }}</td>
+                <td>{{ carrinho.apelido }}</td>
+                <td>
+                    <ul>
+                        {% for item in carrinho.itens %}
+                        <li>{{ item.descricao }} - Preço: {{ item.preco }}</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td>{{ carrinho.apelido_importacao }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{{ url_for('index') }}"><button>Voltar para Início</button></a>
+
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>

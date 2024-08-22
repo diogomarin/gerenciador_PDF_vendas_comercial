@@ -1,8 +1,11 @@
-from flask import render_template, request, jsonify
+from flask import render_template, request, jsonify, redirect, url_for
 from app import app, db
-from models import PDFData
+from models import PDFData, Importacao, Carrinho, ItemCarrinho
 import pdfplumber
 import pandas as pd
+from datetime import datetime
+import json
+
 
 # Função para extrair dados do PDF
 def extract_data_from_pdf(pdf_file):
@@ -23,51 +26,154 @@ def extract_data_from_pdf(pdf_file):
 
 # Rota para upload de PDF e extração de dados
 @app.route('/upload_pdf', methods=['POST'])
+@app.route('/upload_pdf', methods=['POST'])
 def upload_pdf():
     try:
-        if 'file' not in request.files:
-            return jsonify({"error": "No file part"}), 400
+        if 'file' not in request.files or 'apelido' not in request.form or 'data_referencia' not in request.form:
+            return render_template('upload_pdf_form.html', error="Missing data"), 400
 
         file = request.files['file']
+        apelido = request.form['apelido']
+        data_referencia = request.form['data_referencia']
 
         if file.filename == '':
-            return jsonify({"error": "No selected file"}), 400
+            return render_template('upload_pdf_form.html', error="No selected file"), 400
+
+        # Criar uma nova importação
+        nova_importacao = Importacao(apelido=apelido, data_referencia=datetime.strptime(data_referencia, '%Y-%m-%d').date())
+        db.session.add(nova_importacao)
+        db.session.commit()
 
         # Tente extrair os dados do PDF
         df = extract_data_from_pdf(file)
         
-        # Salvar os dados no banco de dados
+        # Salvar os dados no banco de dados vinculando à nova importação
         for index, row in df.iterrows():
-            # Limpar o valor do preço
             preco_str = row['PREÇO'].replace('R$', '').replace('.', '').replace(',', '.').strip()
             try:
                 preco = float(preco_str)
             except ValueError:
-                return jsonify({"error": f"Invalid price format: {row['PREÇO']}"}), 400
+                return render_template('upload_pdf_form.html', error=f"Invalid price format: {row['PREÇO']}"), 400
 
             new_data = PDFData(
                 codigo=row['CÓDIGO'], 
                 descricao=row['DESCRIÇÃO'], 
                 qtd_emb=row['QTD EMB'], 
-                preco=preco
+                preco=preco,
+                importacao_id=nova_importacao.id
             )
             db.session.add(new_data)
         db.session.commit()
 
-        return jsonify({"message": "File processed and data saved"}), 200
+        # Renderiza a página com uma mensagem de sucesso e o botão de "Selecionar Tabela"
+        return render_template('upload_pdf_form.html', success=True)
 
     except Exception as e:
         print(f"Error processing the PDF: {e}")
-        return jsonify({"error": "Internal Server Error"}), 500
+        return render_template('upload_pdf_form.html', error="Internal Server Error"), 500
+# Rota para carregar e exibir uma tabela existente
+@app.route('/select_table', methods=['GET', 'POST'])
+def select_table():
+    if request.method == 'POST':
+        importacao_id = request.form['importacao_id']
+        importacao = Importacao.query.get(importacao_id)
+        if not importacao:
+            return render_template('select_table.html', data=[], importacao=None, error="Tabela não encontrada.")
+        
+        data = PDFData.query.filter_by(importacao_id=importacao_id).all()
+        return render_template('select_table.html', data=data, importacao=importacao)
+    else:
+        importacoes = Importacao.query.all()
+        return render_template('select_table.html', importacoes=importacoes, importacao=None)
 
-# Rota para exibir os dados salvos
-@app.route('/data')
-def data():
-    data = PDFData.query.all()
-    return render_template('data.html', data=data)
+# Rota para busca de itens dentro da tabela selecionada
+@app.route('/search_items', methods=['POST'])
+def search_items():
+    importacao_id = request.form['importacao_id']
+    search_query = request.form['search_query']
+    
+    # Filtra os itens com base na descrição e no ID de importação
+    items = PDFData.query.filter(
+        PDFData.importacao_id == importacao_id,
+        PDFData.descricao.ilike(f"%{search_query}%")
+    ).all()
+    
+    # Obtenha os dados da importação para renderizar a mesma página com os itens filtrados
+    importacao = Importacao.query.get(importacao_id)
+    
+    return render_template('select_table.html', data=items, importacao=importacao, importacoes=Importacao.query.all())
 
-# Rota para exibir o formulário de upload
+# Rota para adicionar itens ao carrinho
+@app.route('/add_to_cart', methods=['POST'])
+def add_to_cart():
+    descricao = request.form['descricao']
+    quantidade = int(request.form['quantidade'])
+    preco = float(request.form['preco'])
+    importacao_id = request.form['importacao_id']
+
+    carrinho = Carrinho(importacao_id=importacao_id)
+    db.session.add(carrinho)
+    db.session.commit()
+
+    item = ItemCarrinho(descricao=descricao, quantidade=quantidade, preco=preco, carrinho_id=carrinho.id)
+    db.session.add(item)
+    db.session.commit()
+
+    return jsonify({"message": "Item added to cart"}), 200
+
+# Rota para salvar o carrinho de itens selecionados
+@app.route('/save_cart', methods=['POST'])
+def save_cart():
+    cart_items = request.form.get('cart_items')
+    apelido = request.form.get('apelido')
+    apelido_importacao = request.form.get('apelido_importacao')
+    
+    if not cart_items:
+        return render_template('select_table.html', data=[], importacao=None, error="Nenhum item no carrinho para salvar.")
+    
+    if not apelido_importacao:
+        return render_template('select_table.html', data=[], importacao=None, error="Apelido da importação está faltando.")
+    
+    cart_items = json.loads(cart_items)
+    
+    # Cria um novo carrinho com o apelido e o apelido da importação
+    carrinho = Carrinho(apelido=apelido, apelido_importacao=apelido_importacao)
+    db.session.add(carrinho)
+    db.session.commit()
+
+    # Adiciona os itens ao carrinho
+    for item in cart_items:
+        item_carrinho = ItemCarrinho(
+            descricao=item['descricao'],
+            preco=item['preco'],
+            carrinho_id=carrinho.id
+        )
+        db.session.add(item_carrinho)
+    
+    db.session.commit()
+
+    return redirect(url_for('view_carts'))
+
+# Rota para visualizar carrinhos salvos na página inicial
+@app.route('/view_carts')
+def view_carts():
+    apelido_importacao = request.args.get('apelido_importacao')
+    
+    if apelido_importacao:
+        carrinhos = Carrinho.query.filter_by(apelido_importacao=apelido_importacao).all()
+    else:
+        carrinhos = Carrinho.query.all()
+    
+    importacoes = Importacao.query.all()
+    
+    return render_template('view_carts.html', carrinhos=carrinhos, importacoes=importacoes)
+
+# Rota para a página inicial, onde o usuário escolhe entre upload ou seleção de tabela
 @app.route('/')
 def index():
-    print("Rota principal acessada")
-    return render_template('upload.html')
+    return render_template('index.html')
+
+# Rota para exibir o formulário de upload de PDF
+@app.route('/upload_pdf_form', methods=['GET'])
+def upload_pdf_form():
+    return render_template('upload_pdf_form.html')

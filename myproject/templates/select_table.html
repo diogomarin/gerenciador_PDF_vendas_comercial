@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabelas Importadas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    {% if not importacao %}
+    <h1>Selecionar Tabela Existente</h1>
+
+    <!-- Formulário para Selecionar uma Tabela -->
+    <form method="POST" action="{{ url_for('select_table') }}">
+        <select id="importacao_id" name="importacao_id" required>
+            <option value="">-- Selecione uma Tabela --</option>
+            {% for imp in importacoes %}
+            <option value="{{ imp.id }}">{{ imp.apelido }} - {{ imp.data_referencia }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Carregar Tabela</button>
+    </form>
+    {% endif %}
+
+    {% if importacao %}
+    <h2>Itens da Tabela: {{ importacao.apelido }} ({{ importacao.data_referencia }})</h2>
+
+    <!-- Formulário de busca -->
+    <form method="POST" action="{{ url_for('search_items') }}">
+        <input type="hidden" name="importacao_id" value="{{ importacao.id }}">
+        <input type="text" name="search_query" placeholder="Buscar descrição..." required>
+        <button type="submit">Buscar</button>
+    </form>
+
+    <!-- Contêiner da tabela com rolamento -->
+    <div class="table-container">
+        <form id="cartForm">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Selecionar</th>
+                        <th>ID</th>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                        <th>QTD EMB</th>
+                        <th>Preço</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in data %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="selected_items" value="{{ item.id }}">
+                        </td>
+                        <td>{{ item.id }}</td>
+                        <td>{{ item.codigo }}</td>
+                        <td>{{ item.descricao }}</td>
+                        <td>{{ item.qtd_emb }}</td>
+                        <td>{{ item.preco }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+    </div>
+
+    <button type="button" onclick="addToCart()">Adicionar ao Carrinho</button>
+
+    <h2>Itens no Carrinho</h2>
+    <table id="cartItems">
+        <thead>
+            <tr>
+                <th>Descrição</th>
+                <th>Preço</th>
+            </tr>
+        </thead>
+        <tbody id="cartItemsBody">
+            <!-- Itens adicionados ao carrinho serão exibidos aqui -->
+        </tbody>
+    </table>
+
+    <form id="saveCartForm" method="POST" action="{{ url_for('save_cart') }}">
+        <input type="hidden" name="cart_items" id="cartItemsInput">
+        <input type="hidden" name="apelido_importacao" value="{{ importacao.apelido }}">
+        <label for="cartApelido">Apelido do Carrinho:</label>
+        <input type="text" name="apelido" id="cartApelido" required>
+        <button type="submit">Salvar Carrinho</button>
+    </form>
+    {% endif %}
+
+    <a href="{{ url_for('index') }}"><button>Voltar para Início</button></a>
+
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>

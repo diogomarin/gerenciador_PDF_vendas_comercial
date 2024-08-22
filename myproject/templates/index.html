@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Gerenciador</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Gerenciador de PDFs</h1>
+    <p>Escolha uma das opções abaixo:</p>
+    <div>
+        <a href="{{ url_for('upload_pdf_form') }}"><button>Carregar PDF Novo</button></a>
+        <a href="{{ url_for('select_table') }}"><button>Selecionar Tabela Importada</button></a>
+        <a href="{{ url_for('view_carts') }}"><button>Visualizar Carrinhos Salvos</button></a>
+    </div>
+</body>
+</html>

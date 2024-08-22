@@ -53,3 +53,10 @@ th, td {
 th {
     background-color: #f2f2f2;
 }
+
+/* Adicionado para limitar a altura da tabela e permitir o rolamento */
+.table-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
