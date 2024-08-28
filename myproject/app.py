@@ -13,17 +13,31 @@ app = Flask(__name__)
 # Configuração baseada no ambiente
 if 'WEBSITE_HOSTNAME' not in os.environ:
     # Desenvolvimento local: usa variáveis de ambiente do arquivo .env
-    print("Carregando configuração de desenvolvimento.")
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
+    #print("Carregando configuração de desenvolvimento.")
+    #app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
+
+    # Local development, where we'll use environment variables
+    print("Loading config.development and environment variables from .env file.")
+    app.config.from_object('azureproject.development')
+    
 else:
     # Produção
-    print("Carregando configuração de produção.")
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
+    #print("Carregando configuração de produção.")
+    #app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
+
+    # Production
+    print("Loading config.production.")
+    app.config.from_object('azureproject.production')
 
 # Carregando a chave secreta do Flask para proteção de sessões e CSRF
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'defaultsecretkey')
+#app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'defaultsecretkey')
 
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+#app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+app.config.update(
+    SQLALCHEMY_DATABASE_URI=app.config.get('DATABASE_URI'),
+    SQLALCHEMY_TRACK_MODIFICATIONS=False,
+)
 
 # Inicializa o banco de dados
 db.init_app(app)
