@@ -25,7 +25,7 @@ Este projeto é uma aplicação Flask para importar, processar e gerenciar dados
 
 A aplicação utiliza PostgreSQL como banco de dados, gerenciado pelo SQLAlchemy. Abaixo estão as principais tabelas e suas relações:
 
-- **`PDFData`**: 
+- **`PDFData`**:
   - Armazena dados extraídos dos PDFs.
   - Colunas principais: `id`, `codigo`, `descricao`, `qtd_emb`, `preco`, `importacao_id`.
   - Relação: Cada `PDFData` está associado a uma `Importacao` através de `importacao_id`.
@@ -51,7 +51,7 @@ Para configurar e executar a aplicação, siga os passos abaixo:
 
 1. **Clone o repositório:**
 
-   git clone https://github.com/seu-usuario/seu-repositorio.git
+   git clone <https://github.com/seu-usuario/seu-repositorio.git>
 
    cd seu-repositorio
 
@@ -60,13 +60,13 @@ Para configurar e executar a aplicação, siga os passos abaixo:
     pip install -r requirements.txt
 
 3. **Instale o PostgreSQL**
-    
+
     Certifique-se de que o PostgreSQL esteja instalado em sua máquina.
 
 4. **Configure o Banco de Dados**
 
     Crie um banco de dados chamado "mydatabase".
-    
+
     Por padrão, a aplicação está configurada para conectar-se ao PostgreSQL com o usuário postgres e senha postgres. Se necessário, você pode alterar essas configurações no arquivo app.py
 
     app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost:5432/mydatabase'
@@ -81,4 +81,4 @@ Para configurar e executar a aplicação, siga os passos abaixo:
 
 7. **Acesse aplicação em seu navegador**
 
-    http://127.0.0.1:5000
+    <http://127.0.0.1:5000>
