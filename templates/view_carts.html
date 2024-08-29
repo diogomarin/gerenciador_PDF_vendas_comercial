@@ -24,7 +24,7 @@
     </form>
 
     <!-- Tabela de Carrinhos Salvos -->
-    <form id="sendCartForm" method="POST" action="{{ url_for('send_cart') }}">
+    <form id="deleteCartForm" method="POST">
         <table>
             <thead>
                 <tr>
@@ -39,7 +39,7 @@
             <tbody>
                 {% for carrinho in carrinhos %}
                 <tr>
-                    <td><input type="checkbox" name="selected_carts" value="{{ carrinho.id }}"></td>
+                    <td><input type="checkbox" name="selected_carts" value="{{ carrinho.id }}" onclick="toggleCheckbox(this)"></td>
                     <td>{{ carrinho.id }}</td>
                     <td>{{ carrinho.apelido }}</td>
                     <td>
@@ -56,12 +56,17 @@
             </tbody>
         </table>
 
-        <!-- Seção para gerar a mensagem -->
-        <h2>Gerar Mensagem para WhatsApp</h2>
-        <label for="nome_cliente">Nome do Cliente:</label>
-        <input type="text" id="nome_cliente" name="nome_cliente" required>
-        <button type="button" onclick="gerarMensagem()">Gerar Mensagem</button>
+        <br>
+        
+        <button type="button" id="deleteButton" class="delete-button" disabled onclick="deleteSelectedCart()">Deletar Carrinho</button>
+
     </form>
+
+    <!-- Seção para gerar a mensagem -->
+    <h2>Gerar Mensagem para WhatsApp</h2>
+    <label for="nome_cliente">Nome do Cliente:</label>
+    <input type="text" id="nome_cliente" name="nome_cliente" required>
+    <button type="button" onclick="gerarMensagem()">Gerar Mensagem</button>
 
     <!-- Área para exibir a mensagem gerada -->
     <div id="mensagemGeradaContainer" style="display: none; margin-top: 20px;">
@@ -76,6 +81,31 @@
     <a href="{{ url_for('index') }}"><button>Voltar para Início</button></a>
 
     <script>
+    function toggleCheckbox(checkbox) {
+        const checkboxes = document.querySelectorAll('input[name="selected_carts"]');
+        const deleteButton = document.getElementById('deleteButton');
+
+        // Desmarcar todos os outros checkboxes e marcar o checkbox atual
+        checkboxes.forEach(cb => {
+            if (cb !== checkbox) {
+                cb.checked = false;
+            }
+        });
+
+        // Verificar se exatamente um checkbox está selecionado
+        const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+
+        // Habilitar o botão de deletar se exatamente um checkbox estiver selecionado
+        deleteButton.disabled = !anyChecked;
+
+        // Alterar estilo do botão conforme o estado
+        if (anyChecked) {
+            deleteButton.classList.add('enabled');
+        } else {
+            deleteButton.classList.remove('enabled');
+        }
+    }
+
     function gerarMensagem() {
         var nomeCliente = document.getElementById('nome_cliente').value;
         var carrinhosSelecionados = document.querySelectorAll('input[name="selected_carts"]:checked');
@@ -113,6 +143,18 @@
     function fecharMensagemGerada() {
         document.getElementById('mensagemGeradaContainer').style.display = "none";
         document.getElementById('nome_cliente').value = '';  // Limpar o nome do cliente após copiar a mensagem
+    }
+
+    function deleteSelectedCart() {
+        const selectedCart = document.querySelector('input[name="selected_carts"]:checked');
+        if (selectedCart) {
+            const cartId = selectedCart.value;
+            const deleteForm = document.getElementById('deleteCartForm');
+            deleteForm.action = `/delete_cart/${cartId}`;
+            deleteForm.submit();
+        } else {
+            alert("Selecione um carrinho para deletar.");
+        }
     }
     </script>
 

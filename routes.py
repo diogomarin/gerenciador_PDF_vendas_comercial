@@ -91,13 +91,16 @@ def select_table():
 def search_items():
     importacao_id = request.form['importacao_id']
     search_query = request.form['search_query']
-    
-    # Filtra os itens com base na descrição e no ID de importação
+
+    # Divide a consulta em termos, separando por vírgula ou ponto e vírgula
+    search_terms = [term.strip() for term in search_query.replace(';', ',').split(',')]
+
+    # Filtra os itens que correspondem a qualquer um dos termos
     items = PDFData.query.filter(
         PDFData.importacao_id == importacao_id,
-        PDFData.descricao.ilike(f"%{search_query}%")
+        db.or_(*[PDFData.descricao.ilike(f"%{term}%") for term in search_terms])
     ).all()
-    
+
     # Obtenha os dados da importação para renderizar a mesma página com os itens filtrados
     importacao = Importacao.query.get(importacao_id)
     
@@ -149,7 +152,7 @@ def save_cart():
     
     db.session.commit()
 
-    return redirect(url_for('index'))
+    return redirect(url_for('view_carts'))
 
 # Rota para visualizar carrinhos salvos na página inicial
 @app.route('/view_carts')
@@ -193,6 +196,15 @@ def send_cart():
         db.session.commit()
 
     return render_template('send_cart.html', mensagens=mensagens, nome_cliente=nome_cliente, venda_realizada=venda_realizada)
+
+# Rota para deletar um carrinho
+@app.route('/delete_cart/<int:cart_id>', methods=['POST'])
+def delete_cart(cart_id):
+    carrinho = Carrinho.query.get_or_404(cart_id)
+    db.session.delete(carrinho)
+    db.session.commit()
+    flash('Carrinho deletado com sucesso!', 'success')
+    return redirect(url_for('view_carts'))
 
 # Rota para a página inicial, onde o usuário escolhe entre upload ou seleção de tabela
 @app.route('/')
