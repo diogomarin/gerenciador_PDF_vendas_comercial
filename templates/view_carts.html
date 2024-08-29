@@ -145,32 +145,43 @@
         document.getElementById('nome_cliente').value = '';  // Limpar o nome do cliente após copiar a mensagem
     }
 
-function deleteSelectedCart() {
+    function deleteSelectedCart() {
     const selectedCart = document.querySelector('input[name="selected_carts"]:checked');
     if (selectedCart) {
         const cartId = selectedCart.value;
+
+        // Define um tempo limite para a requisição fetch
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos
 
         fetch(`/delete_cart/${cartId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
-            }
+            },
+            signal: controller.signal
         })
         .then(response => {
+            clearTimeout(timeoutId); // Limpa o timeout se a resposta for recebida a tempo
             if (response.ok) {
-                window.location.href = '/view_carts';  // Redireciona para a página de carrinhos
+                window.location.href = '/view_carts';
             } else {
                 alert("Erro ao deletar o carrinho.");
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert("Erro ao deletar o carrinho.");
+            if (error.name === 'AbortError') {
+                alert("A requisição demorou muito para responder. Tente novamente.");
+            } else {
+                console.error('Error:', error);
+                alert("Erro ao deletar o carrinho.");
+            }
         });
     } else {
         alert("Selecione um carrinho para deletar.");
     }
 }
+
     </script>
 
 </body>
