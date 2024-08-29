@@ -2,7 +2,10 @@ let cart = [];
 
 document.getElementById('uploadForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
-    
+
+    // Exibe a mensagem de extração em andamento
+    document.getElementById('loadingMessage').style.display = 'block';
+
     let formData = new FormData(this);
     
     fetch('/upload_pdf', {
@@ -11,6 +14,7 @@ document.getElementById('uploadForm')?.addEventListener('submit', function(e) {
     })
     .then(response => response.text())
     .then(html => {
+        // Substitui o conteúdo da página com o HTML retornado
         document.body.innerHTML = html;
     })
     .catch(error => {

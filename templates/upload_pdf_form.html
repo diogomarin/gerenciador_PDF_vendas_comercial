@@ -9,8 +9,6 @@
 <body>
     <h1>Selecione PDF para Upload</h1>
     
-
-    
     <form id="uploadForm" method="POST" action="{{ url_for('upload_pdf') }}">
         <input type="file" id="pdfFile" name="file" accept="application/pdf" required>
         <input type="text" id="apelido" name="apelido" placeholder="Apelido da Tabela" required>
@@ -19,6 +17,8 @@
     </form>
 
     <div id="message">
+        <!-- Mensagem de Extração em Andamento -->
+        <div id="loadingMessage" style="display: none; color: blue;">Extração em andamento, por favor aguarde...</div>
 
         {% if error %}
         <div style="color: red;">Error: {{ error }}</div>
@@ -30,7 +30,6 @@
             <a href="{{ url_for('select_table') }}"><button>Selecionar Tabela</button></a>
         </div>
         {% endif %}
-
     </div>
 
     <br>
