@@ -200,11 +200,19 @@ def send_cart():
 # Rota para deletar um carrinho
 @app.route('/delete_cart/<int:cart_id>', methods=['POST'])
 def delete_cart(cart_id):
-    carrinho = Carrinho.query.get_or_404(cart_id)
-    db.session.delete(carrinho)
-    db.session.commit()
-    flash('Carrinho deletado com sucesso!', 'success')
-    return redirect(url_for('view_carts'))
+    try:
+        cart = Carrinho.query.get(cart_id)
+        if not cart:
+            return jsonify({'error': 'Carrinho não encontrado'}), 404
+
+        db.session.delete(cart)
+        db.session.commit()
+        return jsonify({'message': 'Carrinho deletado com sucesso'}), 200
+    except Exception as e:
+        # Log the error for further inspection
+        print(f"Erro ao deletar o carrinho: {e}")
+        return jsonify({'error': 'Erro interno do servidor'}), 500
+
 
 # Rota para a página inicial, onde o usuário escolhe entre upload ou seleção de tabela
 @app.route('/')

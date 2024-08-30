@@ -11,3 +11,5 @@ DATABASE_URI = 'postgresql+psycopg2://{dbuser}:{dbpass}@{dbhost}/{dbname}'.forma
     dbhost=conn_str_params['host'],
     dbname=conn_str_params['dbname']
 )
+
+SECRET_KEY='91e0d6ea97639c1b522000ccdc2a60d5f4593d24001e57b8ab6b3bb340b2c39d'
