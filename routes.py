@@ -46,13 +46,13 @@ def upload_pdf():
 
         # Tente extrair os dados do PDF
         df = extract_data_from_pdf(file)
-        
+
         # Salvar os dados no banco de dados vinculando à nova importação
         for index, row in df.iterrows():
-            preco_str = row['PREÇO'].replace('R$', '').replace('.', '').replace(',', '.').strip()
+            # Aqui estamos substituindo os separadores de milhar e decimal de acordo com o padrão brasileiro
+            preco_str = row['PREÇO'].replace('.', '').replace(',', '.').strip()
             try:
-                # Converte corretamente de acordo com a lógica de preços no Brasil (milhar e centavos)
-                preco = float(preco_str.replace(',', '.'))  # Substituir vírgula por ponto para valores decimais corretos
+                preco = float(preco_str)  # Converte o valor corretamente
             except ValueError:
                 return render_template('upload_pdf_form.html', error=f"Invalid price format: {row['PREÇO']}"), 400
 
@@ -60,7 +60,7 @@ def upload_pdf():
                 codigo=row['CÓDIGO'], 
                 descricao=row['DESCRIÇÃO'], 
                 qtd_emb=row['QTD EMB'], 
-                preco=preco,
+                preco=preco,  # Valor convertido corretamente
                 importacao_id=nova_importacao.id
             )
             db.session.add(new_data)
