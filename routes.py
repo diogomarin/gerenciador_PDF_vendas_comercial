@@ -49,8 +49,8 @@ def upload_pdf():
 
         # Salvar os dados no banco de dados vinculando à nova importação
         for index, row in df.iterrows():
-            # Aqui estamos substituindo os separadores de milhar e decimal de acordo com o padrão brasileiro
-            preco_str = row['PREÇO'].replace('.', '').replace(',', '.').strip()
+            # Remove o símbolo 'R$' e trata os separadores de milhar e decimal
+            preco_str = row['PREÇO'].replace('R$', '').replace('.', '').replace(',', '.').strip()
             try:
                 preco = float(preco_str)  # Converte o valor corretamente
             except ValueError:
