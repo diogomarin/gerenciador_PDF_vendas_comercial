@@ -45,11 +45,13 @@
                     <td>
                         <ul>
                             {% for item in carrinho.itens %}
-                            <li>{{ item.descricao }} - Preço: {{ item.preco }}</li>
+                            <!-- Formatação do preço corrigida -->
+                            <li>{{ item.descricao }} - Preço: R${{ item.preco | format('%.2f') }}</li>
                             {% endfor %}
                         </ul>
                     </td>
-                    <td>{{ carrinho.total }}</td>
+                    <!-- Total do carrinho formatado corretamente -->
+                    <td>{{ carrinho.total | format('%.2f') }}</td>
                     <td>{{ carrinho.apelido_importacao }}</td>
                 </tr>
                 {% endfor %}

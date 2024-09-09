@@ -48,9 +48,10 @@ def upload_pdf():
         
         # Salvar os dados no banco de dados vinculando à nova importação
         for index, row in df.iterrows():
+            # Ajustando o valor do preço dividindo por 100
             preco_str = row['PREÇO'].replace('R$', '').replace('.', '').replace(',', '.').strip()
             try:
-                preco = float(preco_str)
+                preco = float(preco_str) / 100  # Ajuste aqui
             except ValueError:
                 return render_template('upload_pdf_form.html', error=f"Invalid price format: {row['PREÇO']}"), 400
 
@@ -58,18 +59,19 @@ def upload_pdf():
                 codigo=row['CÓDIGO'], 
                 descricao=row['DESCRIÇÃO'], 
                 qtd_emb=row['QTD EMB'], 
-                preco=preco,
+                preco=preco,  # Preço corrigido
                 importacao_id=nova_importacao.id
             )
             db.session.add(new_data)
         db.session.commit()
 
-        # Renderiza a página com uma mensagem de sucesso e o botão de "Selecionar Tabela"
         return render_template('upload_pdf_form.html', success=True)
 
     except Exception as e:
         print(f"Error processing the PDF: {e}")
         return render_template('upload_pdf_form.html', error="Internal Server Error"), 500
+    
+    
 # Rota para carregar e exibir uma tabela existente
 @app.route('/select_table', methods=['GET', 'POST'])
 def select_table():
