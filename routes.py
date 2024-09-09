@@ -98,16 +98,16 @@ def search_items():
     importacao_id = request.form['importacao_id']
     search_query = request.form['search_query']
 
-    # Divide a consulta em termos, separando por vírgula ou ponto e vírgula
-    search_terms = [term.strip() for term in search_query.replace(';', ',').split(',')]
-
-    # Filtra os itens que correspondem a qualquer um dos termos
+    # Filtra os itens com base na descrição e no ID de importação
     items = PDFData.query.filter(
         PDFData.importacao_id == importacao_id,
-        db.or_(*[PDFData.descricao.ilike(f"%{term}%") for term in search_terms])
+        PDFData.descricao.ilike(f"%{search_query}%")
     ).all()
 
-    # Obtenha os dados da importação para renderizar a mesma página com os itens filtrados
+    # Formatar o preço para cada item retornado
+    for item in items:
+        item.preco_formatado = item.preco_formatado()
+
     importacao = Importacao.query.get(importacao_id)
     
     return render_template('select_table.html', data=items, importacao=importacao, importacoes=Importacao.query.all())
@@ -169,13 +169,11 @@ def view_carts():
         carrinhos = Carrinho.query.filter_by(apelido_importacao=apelido_importacao).all()
     else:
         carrinhos = Carrinho.query.all()
-
-    # Formatar os preços em cada item e no total do carrinho
+    
     for carrinho in carrinhos:
         for item in carrinho.itens:
-            item.preco_formatado = f"R${item.preco / 100:,.2f}".replace(',', 'v').replace('.', ',').replace('v', '.')
-        carrinho.total_formatado = f"R${carrinho.total / 100:,.2f}".replace(',', 'v').replace('.', ',').replace('v', '.')
-
+            item.preco_formatado = item.preco_formatado()  # Formatar o preço aqui
+    
     importacoes = Importacao.query.all()
     
     return render_template('view_carts.html', carrinhos=carrinhos, importacoes=importacoes)

@@ -47,3 +47,6 @@ class ItemCarrinho(db.Model):
     descricao = db.Column(db.String(255))
     preco = db.Column(db.Float)
     carrinho_id = db.Column(db.Integer, db.ForeignKey('carrinho.id'))
+
+    def preco_formatado(self):
+        return f"R$ {self.preco:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")

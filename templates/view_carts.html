@@ -49,7 +49,7 @@
                             {% endfor %}
                         </ul>
                     </td>
-                    <td>{{ carrinho.total_formatado }}</td>
+                    <td>{{ carrinho.total | floatformat:2 }}</td>
                     <td>{{ carrinho.apelido_importacao }}</td>
                 </tr>
                 {% endfor %}
