@@ -38,15 +38,9 @@ class Carrinho(db.Model):
     def total(self):
         return sum(item.preco for item in self.itens)
 
-    def total_formatado(self):
-        return f"R${self.total / 100:,.2f}".replace(',', 'v').replace('.', ',').replace('v', '.')
-
 # Itens dentro do carrinho
 class ItemCarrinho(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     descricao = db.Column(db.String(255))
     preco = db.Column(db.Float)
     carrinho_id = db.Column(db.Integer, db.ForeignKey('carrinho.id'))
-
-    def preco_formatado(self):
-        return f"R$ {self.preco:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")

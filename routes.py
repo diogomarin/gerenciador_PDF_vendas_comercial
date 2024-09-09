@@ -26,7 +26,6 @@ def extract_data_from_pdf(pdf_file):
 
 # Rota para upload de PDF e extração de dados
 @app.route('/upload_pdf', methods=['POST'])
-@app.route('/upload_pdf', methods=['POST'])
 def upload_pdf():
     try:
         if 'file' not in request.files or 'apelido' not in request.form or 'data_referencia' not in request.form:
@@ -59,7 +58,7 @@ def upload_pdf():
                 codigo=row['CÓDIGO'], 
                 descricao=row['DESCRIÇÃO'], 
                 qtd_emb=row['QTD EMB'], 
-                preco=preco,
+                preco=preco,  # Mantenha o valor como float sem dividir
                 importacao_id=nova_importacao.id
             )
             db.session.add(new_data)
@@ -71,6 +70,7 @@ def upload_pdf():
     except Exception as e:
         print(f"Error processing the PDF: {e}")
         return render_template('upload_pdf_form.html', error="Internal Server Error"), 500
+    
     
 # Rota para carregar e exibir uma tabela existente
 @app.route('/select_table', methods=['GET', 'POST'])
@@ -98,16 +98,20 @@ def search_items():
     importacao_id = request.form['importacao_id']
     search_query = request.form['search_query']
 
-    # Filtra os itens com base na descrição e no ID de importação
+    # Divide a consulta em termos, separando por vírgula ou ponto e vírgula
+    search_terms = [term.strip() for term in search_query.replace(';', ',').split(',')]
+
+    # Filtra os itens que correspondem a qualquer um dos termos
     items = PDFData.query.filter(
         PDFData.importacao_id == importacao_id,
-        PDFData.descricao.ilike(f"%{search_query}%")
+        db.or_(*[PDFData.descricao.ilike(f"%{term}%") for term in search_terms])
     ).all()
 
-    # Formatar o preço para cada item retornado
+    # Formatar os preços antes de passar para o template
     for item in items:
-        item.preco_formatado = item.preco_formatado()
+        item.preco_formatado = f"R$ {item.preco:,.2f}".replace(",", "v").replace(".", ",").replace("v", ".")
 
+    # Obtenha os dados da importação para renderizar a mesma página com os itens filtrados
     importacao = Importacao.query.get(importacao_id)
     
     return render_template('select_table.html', data=items, importacao=importacao, importacoes=Importacao.query.all())
@@ -169,11 +173,13 @@ def view_carts():
         carrinhos = Carrinho.query.filter_by(apelido_importacao=apelido_importacao).all()
     else:
         carrinhos = Carrinho.query.all()
-    
+
+    # Formatar os preços em cada item e no total do carrinho
     for carrinho in carrinhos:
         for item in carrinho.itens:
-            item.preco_formatado = item.preco_formatado()  # Formatar o preço aqui
-    
+            item.preco_formatado = f"R$ {item.preco:,.2f}".replace(",", "v").replace(".", ",").replace("v", ".")
+        carrinho.total_formatado = f"R$ {carrinho.total:,.2f}".replace(",", "v").replace(".", ",").replace("v", ".")
+
     importacoes = Importacao.query.all()
     
     return render_template('view_carts.html', carrinhos=carrinhos, importacoes=importacoes)
