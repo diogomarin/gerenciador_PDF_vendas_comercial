@@ -56,7 +56,7 @@
                         <td>{{ item.codigo }}</td>
                         <td>{{ item.descricao }}</td>
                         <td>{{ item.qtd_emb }}</td>
-                        <td>{{ "R$ {:,.2f}".format(item.preco).replace(",", "v").replace(".", ",").replace("v", ".") }}</td>
+                        <td>{{ "R$ {:,.2f}".format(item.preco).replace(',', 'v').replace('.', ',').replace('v', '.') }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

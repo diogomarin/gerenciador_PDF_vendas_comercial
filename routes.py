@@ -24,6 +24,7 @@ def extract_data_from_pdf(pdf_file):
         print(f"Error extracting data from PDF: {e}")
         raise
 
+
 # Rota para upload de PDF e extração de dados
 @app.route('/upload_pdf', methods=['POST'])
 def upload_pdf():
@@ -50,7 +51,8 @@ def upload_pdf():
         for index, row in df.iterrows():
             preco_str = row['PREÇO'].replace('R$', '').replace('.', '').replace(',', '.').strip()
             try:
-                preco = float(preco_str)
+                # Converte corretamente de acordo com a lógica de preços no Brasil (milhar e centavos)
+                preco = float(preco_str.replace(',', '.'))  # Substituir vírgula por ponto para valores decimais corretos
             except ValueError:
                 return render_template('upload_pdf_form.html', error=f"Invalid price format: {row['PREÇO']}"), 400
 
@@ -58,7 +60,7 @@ def upload_pdf():
                 codigo=row['CÓDIGO'], 
                 descricao=row['DESCRIÇÃO'], 
                 qtd_emb=row['QTD EMB'], 
-                preco=preco,  # Mantenha o valor como float sem dividir
+                preco=preco,
                 importacao_id=nova_importacao.id
             )
             db.session.add(new_data)
@@ -92,6 +94,7 @@ def select_table():
         importacoes = Importacao.query.all()
         return render_template('select_table.html', importacoes=importacoes, importacao=None)
 
+
 # Rota para busca de itens dentro da tabela selecionada
 @app.route('/search_items', methods=['POST'])
 def search_items():
@@ -115,6 +118,7 @@ def search_items():
     importacao = Importacao.query.get(importacao_id)
     
     return render_template('select_table.html', data=items, importacao=importacao, importacoes=Importacao.query.all())
+
 
 # Rota para adicionar itens ao carrinho
 @app.route('/add_to_cart', methods=['POST'])
@@ -164,6 +168,7 @@ def save_cart():
 
     return redirect(url_for('view_carts'))
 
+
 # Rota para visualizar carrinhos salvos na página inicial
 @app.route('/view_carts')
 def view_carts():
@@ -183,6 +188,7 @@ def view_carts():
     importacoes = Importacao.query.all()
     
     return render_template('view_carts.html', carrinhos=carrinhos, importacoes=importacoes)
+
 
 @app.route('/send_cart', methods=['POST'])
 def send_cart():
