@@ -71,6 +71,7 @@ def upload_pdf():
     except Exception as e:
         print(f"Error processing the PDF: {e}")
         return render_template('upload_pdf_form.html', error="Internal Server Error"), 500
+    
 # Rota para carregar e exibir uma tabela existente
 @app.route('/select_table', methods=['GET', 'POST'])
 def select_table():
@@ -81,6 +82,11 @@ def select_table():
             return render_template('select_table.html', data=[], importacao=None, error="Tabela não encontrada.")
         
         data = PDFData.query.filter_by(importacao_id=importacao_id).all()
+
+        # Formatar os preços antes de passar para o template
+        for item in data:
+            item.preco_formatado = f"R${item.preco / 100:,.2f}".replace(',', 'v').replace('.', ',').replace('v', '.')
+
         return render_template('select_table.html', data=data, importacao=importacao)
     else:
         importacoes = Importacao.query.all()
@@ -163,7 +169,13 @@ def view_carts():
         carrinhos = Carrinho.query.filter_by(apelido_importacao=apelido_importacao).all()
     else:
         carrinhos = Carrinho.query.all()
-    
+
+    # Formatar os preços em cada item e no total do carrinho
+    for carrinho in carrinhos:
+        for item in carrinho.itens:
+            item.preco_formatado = f"R${item.preco / 100:,.2f}".replace(',', 'v').replace('.', ',').replace('v', '.')
+        carrinho.total_formatado = f"R${carrinho.total / 100:,.2f}".replace(',', 'v').replace('.', ',').replace('v', '.')
+
     importacoes = Importacao.query.all()
     
     return render_template('view_carts.html', carrinhos=carrinhos, importacoes=importacoes)

@@ -45,11 +45,11 @@
                     <td>
                         <ul>
                             {% for item in carrinho.itens %}
-                            <li>{{ item.descricao }} - Preço: {{ item.preco }}</li>
+                            <li>{{ item.descricao }} - Preço: {{ item.preco_formatado }}</li>
                             {% endfor %}
                         </ul>
                     </td>
-                    <td>{{ carrinho.total }}</td>
+                    <td>{{ carrinho.total_formatado }}</td>
                     <td>{{ carrinho.apelido_importacao }}</td>
                 </tr>
                 {% endfor %}
