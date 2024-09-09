@@ -45,11 +45,11 @@
                     <td>
                         <ul>
                             {% for item in carrinho.itens %}
-                            <li>{{ item.descricao }} - Preço: {{ "R$ {:,.2f}".format(item.preco).replace(',', 'v').replace('.', ',').replace('v', '.') }}</li>
+                            <li>{{ item.descricao }} - Preço: {{ item.preco }}</li>
                             {% endfor %}
                         </ul>
                     </td>
-                    <td>{{ "R$ {:,.2f}".format(carrinho.total).replace(',', 'v').replace('.', ',').replace('v', '.') }}</td>
+                    <td>{{ carrinho.total }}</td>
                     <td>{{ carrinho.apelido_importacao }}</td>
                 </tr>
                 {% endfor %}
