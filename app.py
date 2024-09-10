@@ -27,7 +27,6 @@ app.config.update(
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
 )
 
-
 '''
 # Configuração para localhost
 # Desenvolvimento local: usa variáveis de ambiente do arquivo .env

@@ -48,18 +48,21 @@ def upload_pdf():
         
         # Salvar os dados no banco de dados vinculando à nova importação
         for index, row in df.iterrows():
-            # Ajustando o valor do preço dividindo por 100
-            preco_str = row['PREÇO'].replace('R$', '').replace('.', '').replace(',', '.').strip()
+            # Remove 'R$', remove vírgulas e mantém os pontos para valores decimais
+            preco_str = row['PREÇO'].replace('R$', '').replace(',', '').strip()
             try:
-                preco = float(preco_str) / 100  # Ajuste aqui
+                # Converte a string para float
+                preco = float(preco_str)
+
             except ValueError:
                 return render_template('upload_pdf_form.html', error=f"Invalid price format: {row['PREÇO']}"), 400
 
+            # Adiciona os dados ao banco
             new_data = PDFData(
                 codigo=row['CÓDIGO'], 
                 descricao=row['DESCRIÇÃO'], 
                 qtd_emb=row['QTD EMB'], 
-                preco=preco,  # Preço corrigido
+                preco=preco,  # Preço ajustado
                 importacao_id=nova_importacao.id
             )
             db.session.add(new_data)
@@ -81,11 +84,19 @@ def select_table():
         if not importacao:
             return render_template('select_table.html', data=[], importacao=None, error="Tabela não encontrada.")
         
+        # Busca todos os registros relacionados à importação
         data = PDFData.query.filter_by(importacao_id=importacao_id).all()
+
+        # Aqui formatamos os preços no backend antes de enviar ao template
+        for item in data:
+            # Formata o preço para duas casas decimais e adiciona separador de milhar e vírgula para decimais
+            item.preco_formatado = f"{item.preco:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
         return render_template('select_table.html', data=data, importacao=importacao)
     else:
         importacoes = Importacao.query.all()
         return render_template('select_table.html', importacoes=importacoes, importacao=None)
+    
 
 # Rota para busca de itens dentro da tabela selecionada
 @app.route('/search_items', methods=['POST'])
@@ -104,7 +115,11 @@ def search_items():
 
     # Obtenha os dados da importação para renderizar a mesma página com os itens filtrados
     importacao = Importacao.query.get(importacao_id)
-    
+
+    # Formatar os preços no backend
+    for item in items:
+        item.preco_formatado = f"{item.preco:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
     return render_template('select_table.html', data=items, importacao=importacao, importacoes=Importacao.query.all())
 
 # Rota para adicionar itens ao carrinho
@@ -144,9 +159,13 @@ def save_cart():
 
     # Adiciona os itens ao carrinho
     for item in cart_items:
+        # Converter o preço de string com vírgula para float com ponto decimal
+        preco_str = item['preco'].replace('.', '').replace(',', '.')
+        preco = float(preco_str)  # Agora o preço está no formato correto
+
         item_carrinho = ItemCarrinho(
             descricao=item['descricao'],
-            preco=item['preco'],
+            preco=preco,  # Preço convertido corretamente para FLOAT
             carrinho_id=carrinho.id
         )
         db.session.add(item_carrinho)
@@ -164,10 +183,17 @@ def view_carts():
         carrinhos = Carrinho.query.filter_by(apelido_importacao=apelido_importacao).all()
     else:
         carrinhos = Carrinho.query.all()
-    
+
+    # Formatar os preços no backend
+    for carrinho in carrinhos:
+        carrinho.total_formatado = f"{carrinho.total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+        for item in carrinho.itens:
+            item.preco_formatado = f"{item.preco:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
     importacoes = Importacao.query.all()
     
     return render_template('view_carts.html', carrinhos=carrinhos, importacoes=importacoes)
+
 
 @app.route('/send_cart', methods=['POST'])
 def send_cart():

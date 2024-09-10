@@ -18,6 +18,7 @@
             <option value="{{ imp.id }}">{{ imp.apelido }} - {{ imp.data_referencia }}</option>
             {% endfor %}
         </select>
+        <br><br>
         <button type="submit">Carregar Tabela</button>
     </form>
     {% endif %}
@@ -56,8 +57,7 @@
                         <td>{{ item.codigo }}</td>
                         <td>{{ item.descricao }}</td>
                         <td>{{ item.qtd_emb }}</td>
-                        <!-- Formatação dos preços corrigida -->
-                        <td>{{ item.preco | format('%.2f') }}</td>
+                        <td>{{ item.preco_formatado }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -89,6 +89,7 @@
     </form>
     {% endif %}
 
+    <br><br>
     <a href="{{ url_for('index') }}"><button>Voltar para Início</button></a>
 
     <script src="{{ url_for('static', filename='main.js') }}"></script>
