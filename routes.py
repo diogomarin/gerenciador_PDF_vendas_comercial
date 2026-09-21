@@ -1,252 +1,156 @@
-from flask import render_template, request, jsonify, redirect, url_for, flash
-from app import app, db
-from models import PDFData, Importacao, Carrinho, ItemCarrinho
-import pdfplumber
-import pandas as pd
-from datetime import datetime
 import json
+from datetime import datetime
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, Form, Request, UploadFile
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
+from database import BASE_DIR, get_db
+from models import Carrinho, Importacao, ItemCarrinho, PDFData
+from pdf_service import PDFInvalido, format_brl, importar_pdf
+
+router = APIRouter()
+templates = Jinja2Templates(directory=Path(BASE_DIR) / "templates")
 
 
-# Função para extrair dados do PDF
-def extract_data_from_pdf(pdf_file):
-    try:
-        data = []
-        with pdfplumber.open(pdf_file) as pdf:
-            for page in pdf.pages:
-                table = page.extract_table()
-                if table:
-                    data.extend(table)
-        
-        # Convertendo a lista de listas para um DataFrame
-        df = pd.DataFrame(data[1:], columns=["CÓDIGO", "DESCRIÇÃO", "QTD EMB", "PREÇO"])
-        return df
-    except Exception as e:
-        print(f"Error extracting data from PDF: {e}")
-        raise
-
-# Rota para upload de PDF e extração de dados
-@app.route('/upload_pdf', methods=['POST'])
-def upload_pdf():
-    try:
-        if 'file' not in request.files or 'apelido' not in request.form or 'data_referencia' not in request.form:
-            return render_template('upload_pdf_form.html', error="Missing data"), 400
-
-        file = request.files['file']
-        apelido = request.form['apelido']
-        data_referencia = request.form['data_referencia']
-
-        if file.filename == '':
-            return render_template('upload_pdf_form.html', error="No selected file"), 400
-
-        # Criar uma nova importação
-        nova_importacao = Importacao(apelido=apelido, data_referencia=datetime.strptime(data_referencia, '%Y-%m-%d').date())
-        db.session.add(nova_importacao)
-        db.session.commit()
-
-        # Tente extrair os dados do PDF
-        df = extract_data_from_pdf(file)
-        
-        # Salvar os dados no banco de dados vinculando à nova importação
-        for index, row in df.iterrows():
-            # Remove 'R$', remove vírgulas e mantém os pontos para valores decimais
-            preco_str = row['PREÇO'].replace('R$', '').replace(',', '').strip()
-            try:
-                # Converte a string para float
-                preco = float(preco_str)
-
-            except ValueError:
-                return render_template('upload_pdf_form.html', error=f"Invalid price format: {row['PREÇO']}"), 400
-
-            # Adiciona os dados ao banco
-            new_data = PDFData(
-                codigo=row['CÓDIGO'], 
-                descricao=row['DESCRIÇÃO'], 
-                qtd_emb=row['QTD EMB'], 
-                preco=preco,  # Preço ajustado
-                importacao_id=nova_importacao.id
-            )
-            db.session.add(new_data)
-        db.session.commit()
-
-        return render_template('upload_pdf_form.html', success=True)
-
-    except Exception as e:
-        print(f"Error processing the PDF: {e}")
-        return render_template('upload_pdf_form.html', error="Internal Server Error"), 500
-    
-    
-# Rota para carregar e exibir uma tabela existente
-@app.route('/select_table', methods=['GET', 'POST'])
-def select_table():
-    if request.method == 'POST':
-        importacao_id = request.form['importacao_id']
-        importacao = Importacao.query.get(importacao_id)
-        if not importacao:
-            return render_template('select_table.html', data=[], importacao=None, error="Tabela não encontrada.")
-        
-        # Busca todos os registros relacionados à importação
-        data = PDFData.query.filter_by(importacao_id=importacao_id).all()
-
-        # Aqui formatamos os preços no backend antes de enviar ao template
-        for item in data:
-            # Formata o preço para duas casas decimais e adiciona separador de milhar e vírgula para decimais
-            item.preco_formatado = f"{item.preco:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-
-        return render_template('select_table.html', data=data, importacao=importacao)
-    else:
-        importacoes = Importacao.query.all()
-        return render_template('select_table.html', importacoes=importacoes, importacao=None)
-    
-
-# Rota para busca de itens dentro da tabela selecionada
-@app.route('/search_items', methods=['POST'])
-def search_items():
-    importacao_id = request.form['importacao_id']
-    search_query = request.form['search_query']
-
-    # Divide a consulta em termos, separando por vírgula ou ponto e vírgula
-    search_terms = [term.strip() for term in search_query.replace(';', ',').split(',')]
-
-    # Filtra os itens que correspondem a qualquer um dos termos
-    items = PDFData.query.filter(
-        PDFData.importacao_id == importacao_id,
-        db.or_(*[PDFData.descricao.ilike(f"%{term}%") for term in search_terms])
-    ).all()
-
-    # Obtenha os dados da importação para renderizar a mesma página com os itens filtrados
-    importacao = Importacao.query.get(importacao_id)
-
-    # Formatar os preços no backend
-    for item in items:
-        item.preco_formatado = f"{item.preco:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-
-    return render_template('select_table.html', data=items, importacao=importacao, importacoes=Importacao.query.all())
-
-# Rota para adicionar itens ao carrinho
-@app.route('/add_to_cart', methods=['POST'])
-def add_to_cart():
-    descricao = request.form['descricao']
-    quantidade = int(request.form['quantidade'])
-    preco = float(request.form['preco'])
-    importacao_id = request.form['importacao_id']
-
-    carrinho = Carrinho(importacao_id=importacao_id)
-    db.session.add(carrinho)
-    db.session.commit()
-
-    item = ItemCarrinho(descricao=descricao, quantidade=quantidade, preco=preco, carrinho_id=carrinho.id)
-    db.session.add(item)
-    db.session.commit()
-
-    return jsonify({"message": "Item added to cart"}), 200
-
-# Rota para salvar o carrinho de itens selecionados
-@app.route('/save_cart', methods=['POST'])
-def save_cart():
-    cart_items = request.form.get('cart_items')
-    apelido = request.form.get('apelido')
-    apelido_importacao = request.form.get('apelido_importacao')
-    
-    if not cart_items:
-        return render_template('select_table.html', data=[], importacao=None, error="Nenhum item no carrinho para salvar.")
-    
-    cart_items = json.loads(cart_items)
-
-    # Cria um novo carrinho com o apelido e o apelido da importação
-    carrinho = Carrinho(apelido=apelido, apelido_importacao=apelido_importacao)
-    db.session.add(carrinho)
-    db.session.commit()
-
-    # Adiciona os itens ao carrinho
-    for item in cart_items:
-        # Converter o preço de string com vírgula para float com ponto decimal
-        preco_str = item['preco'].replace('.', '').replace(',', '.')
-        preco = float(preco_str)  # Agora o preço está no formato correto
-
-        item_carrinho = ItemCarrinho(
-            descricao=item['descricao'],
-            preco=preco,  # Preço convertido corretamente para FLOAT
-            carrinho_id=carrinho.id
-        )
-        db.session.add(item_carrinho)
-    
-    db.session.commit()
-
-    return redirect(url_for('view_carts'))
-
-# Rota para visualizar carrinhos salvos na página inicial
-@app.route('/view_carts')
-def view_carts():
-    apelido_importacao = request.args.get('apelido_importacao')
-    
-    if apelido_importacao:
-        carrinhos = Carrinho.query.filter_by(apelido_importacao=apelido_importacao).all()
-    else:
-        carrinhos = Carrinho.query.all()
-
-    # Formatar os preços no backend
-    for carrinho in carrinhos:
-        carrinho.total_formatado = f"{carrinho.total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-        for item in carrinho.itens:
-            item.preco_formatado = f"{item.preco:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-
-    importacoes = Importacao.query.all()
-    
-    return render_template('view_carts.html', carrinhos=carrinhos, importacoes=importacoes)
-
-
-@app.route('/send_cart', methods=['POST'])
-def send_cart():
-    selected_carts = request.form.getlist('selected_carts')
-    nome_cliente = request.form.get('nome_cliente')
-    venda_realizada = request.form.get('venda_realizada') == 'on'
-
-    if not selected_carts or not nome_cliente:
-        flash("Você deve selecionar um carrinho e fornecer o nome do cliente.", "error")
-        return redirect(url_for('view_carts'))
-
-    # Gera a mensagem personalizada
-    mensagens = []
-    for cart_id in selected_carts:
-        carrinho = Carrinho.query.get(cart_id)
-        itens_mensagem = "\n".join([f"{item.descricao}: R${item.preco}" for item in carrinho.itens])
-        mensagem = (
-            f"Olá {nome_cliente},\n"
-            f"Aqui estão os itens do seu carrinho:\n{itens_mensagem}\n"
-            f"Total: R${carrinho.total:.2f}\n"
-        )
-        mensagens.append(mensagem)
-
-        # Atualiza o carrinho com os detalhes do envio
-        carrinho.enviado_para = nome_cliente
-        carrinho.data_envio = datetime.utcnow()
-        db.session.commit()
-
-    return render_template('send_cart.html', mensagens=mensagens, nome_cliente=nome_cliente, venda_realizada=venda_realizada)
-
-# Rota para deletar um carrinho
-@app.route('/delete_cart/<int:cart_id>', methods=['POST'])
-def delete_cart(cart_id):
-    try:
-        cart = Carrinho.query.get(cart_id)
-        if not cart:
-            return jsonify({'error': 'Carrinho não encontrado'}), 404
-
-        db.session.delete(cart)
-        db.session.commit()
-        return jsonify({'message': 'Carrinho deletado com sucesso'}), 200
-    except Exception as e:
-        # Log the error for further inspection
-        print(f"Erro ao deletar o carrinho: {e}")
-        return jsonify({'error': 'Erro interno do servidor'}), 500
+def _render(request: Request, name: str, status_code: int = 200, **context):
+    return templates.TemplateResponse(request, name, context, status_code=status_code)
 
 
 # Rota para a página inicial, onde o usuário escolhe entre upload ou seleção de tabela
-@app.route('/')
-def index():
-    return render_template('index.html')
+@router.get("/")
+def index(request: Request):
+    return _render(request, "index.html")
+
 
 # Rota para exibir o formulário de upload de PDF
-@app.route('/upload_pdf_form', methods=['GET'])
-def upload_pdf_form():
-    return render_template('upload_pdf_form.html')
+@router.get("/upload_pdf_form")
+def upload_pdf_form(request: Request):
+    return _render(request, "upload_pdf_form.html")
+
+
+# Rota para upload de PDF e extração de dados
+@router.post("/upload_pdf")
+def upload_pdf(
+    request: Request,
+    file: UploadFile,
+    apelido: str = Form(...),
+    data_referencia: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not file.filename:
+        return _render(request, "upload_pdf_form.html", 400, error="No selected file")
+    try:
+        data = datetime.strptime(data_referencia, "%Y-%m-%d").date()
+        importar_pdf(db, file.file, apelido, data)
+    except (PDFInvalido, ValueError) as e:
+        db.rollback()
+        return _render(request, "upload_pdf_form.html", 400, error=str(e))
+    except Exception as e:
+        db.rollback()
+        print(f"Error processing the PDF: {e}")
+        return _render(request, "upload_pdf_form.html", 500, error="Internal Server Error")
+    return _render(request, "upload_pdf_form.html", success=True)
+
+
+# Rota para listar as tabelas importadas
+@router.get("/select_table")
+def select_table_form(request: Request, db: Session = Depends(get_db)):
+    return _render(request, "select_table.html", importacoes=db.query(Importacao).all(), importacao=None)
+
+
+# Rota para carregar e exibir uma tabela existente
+@router.post("/select_table")
+def select_table(request: Request, importacao_id: int = Form(...), db: Session = Depends(get_db)):
+    importacao = db.get(Importacao, importacao_id)
+    if not importacao:
+        return _render(request, "select_table.html", data=[], importacao=None, error="Tabela não encontrada.")
+
+    data = db.query(PDFData).filter_by(importacao_id=importacao_id).all()
+    for item in data:
+        item.preco_formatado = format_brl(item.preco)
+    return _render(request, "select_table.html", data=data, importacao=importacao)
+
+
+# Rota para busca de itens dentro da tabela selecionada
+@router.post("/search_items")
+def search_items(
+    request: Request,
+    importacao_id: int = Form(...),
+    search_query: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    # Divide a consulta em termos, separando por vírgula ou ponto e vírgula
+    terms = [t.strip() for t in search_query.replace(";", ",").split(",") if t.strip()]
+
+    items = (
+        db.query(PDFData)
+        .filter(
+            PDFData.importacao_id == importacao_id,
+            or_(*[PDFData.descricao.ilike(f"%{t}%") for t in terms]),
+        )
+        .all()
+    )
+    for item in items:
+        item.preco_formatado = format_brl(item.preco)
+
+    return _render(
+        request,
+        "select_table.html",
+        data=items,
+        importacao=db.get(Importacao, importacao_id),
+        importacoes=db.query(Importacao).all(),
+    )
+
+
+# Rota para salvar o carrinho de itens selecionados
+@router.post("/save_cart")
+def save_cart(
+    request: Request,
+    cart_items: str = Form(""),
+    apelido: str = Form(...),
+    apelido_importacao: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not cart_items:
+        return _render(request, "select_table.html", data=[], importacao=None, error="Nenhum item no carrinho para salvar.")
+
+    carrinho = Carrinho(apelido=apelido, apelido_importacao=apelido_importacao)
+    for item in json.loads(cart_items):
+        # Preço vem formatado em pt-BR ('1.234,50')
+        preco = float(item["preco"].replace(".", "").replace(",", "."))
+        carrinho.itens.append(ItemCarrinho(descricao=item["descricao"], preco=preco))
+    db.add(carrinho)
+    db.commit()
+
+    return RedirectResponse("/view_carts", status_code=303)
+
+
+# Rota para visualizar carrinhos salvos
+@router.get("/view_carts")
+def view_carts(request: Request, apelido_importacao: str | None = None, db: Session = Depends(get_db)):
+    query = db.query(Carrinho)
+    if apelido_importacao:
+        query = query.filter_by(apelido_importacao=apelido_importacao)
+    carrinhos = query.all()
+
+    for carrinho in carrinhos:
+        carrinho.total_formatado = format_brl(carrinho.total)
+        for item in carrinho.itens:
+            item.preco_formatado = format_brl(item.preco)
+
+    return _render(request, "view_carts.html", carrinhos=carrinhos, importacoes=db.query(Importacao).all())
+
+
+# Rota para deletar um carrinho
+@router.post("/delete_cart/{cart_id}")
+def delete_cart(cart_id: int, db: Session = Depends(get_db)):
+    cart = db.get(Carrinho, cart_id)
+    if not cart:
+        return JSONResponse({"error": "Carrinho não encontrado"}, status_code=404)
+    db.delete(cart)
+    db.commit()
+    return {"message": "Carrinho deletado com sucesso"}

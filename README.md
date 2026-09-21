@@ -1,84 +1,58 @@
 # Gerenciador de PDFs - Importação e Gestão de Itens
 
-Este projeto é uma aplicação Flask para importar, processar e gerenciar dados extraídos de PDFs. A aplicação permite carregar PDFs, visualizar itens importados, adicionar itens a carrinhos e visualizar carrinhos salvos.
+Aplicação **FastAPI** que roda apenas localmente, com banco **SQLite**. Importa listas de preço em PDF, permite buscar itens, montar carrinhos e gerar mensagens para WhatsApp.
 
 ## Funcionalidades
 
-- **Upload de PDFs**: Carregue arquivos PDF e processe os dados, armazenando-os no banco de dados PostgreSQL.
-- **Seleção de Tabelas Importadas**: Selecione tabelas previamente importadas para visualização e manipulação.
-- **Busca e Filtro de Itens**: Realize buscas na tabela importada para filtrar itens com base na descrição.
-- **Gerenciamento de Carrinhos**: Adicione itens ao carrinho, salve carrinhos com um apelido e visualize carrinhos salvos.
-- **Visualização de Carrinhos**: Veja todos os carrinhos salvos, com a opção de filtrar por tabela de referência.
+- **Upload de PDFs**: extrai a tabela de itens (código, descrição, qtd emb, preço) e grava no SQLite.
+- **Seleção de tabelas importadas** e **busca** por descrição (vários termos separados por `,` ou `;`).
+- **Carrinhos**: adicione itens, salve com um apelido, filtre por tabela de referência e delete.
+- **Mensagem para WhatsApp** a partir de um carrinho salvo.
 
-## Estrutura do Projeto
+## Estrutura
 
-- **`app.py`**: Arquivo principal para iniciar o aplicativo Flask.
-- **`models.py`**: Define os modelos de dados usando SQLAlchemy.
-- **`routes.py`**: Contém todas as rotas da aplicação, incluindo o processamento de PDFs, gerenciamento de carrinhos, e busca de itens.
-- **`index.html`**: Página inicial com as opções principais da aplicação.
-- **`upload_pdf_form.html`**: Formulário para upload de PDFs.
-- **`select_table.html`**: Interface para seleção de tabela, busca de itens, e gerenciamento de carrinho.
-- **`view_carts.html`**: Página para visualizar e filtrar carrinhos salvos.
-- **`main.js`**: JavaScript para manipulação dinâmica da interface, incluindo adicionar itens ao carrinho e manipular o DOM.
+- `app.py`: cria a aplicação FastAPI, monta `/static` e cria as tabelas na inicialização.
+- `database.py`: engine/sessão SQLAlchemy (arquivo `gerenciador.db` na raiz, ignorado pelo git).
+- `models.py`: `Importacao`, `PDFData`, `Carrinho`, `ItemCarrinho`.
+- `pdf_service.py`: extração do PDF (pdfplumber + pandas) e gravação da importação.
+- `routes.py`: rotas e templates Jinja2 (`templates/`, `static/`).
+- `seed.py`: importa os PDFs de `data/` para o banco local.
+- `tests/`: testes usando os PDFs de `data/` com um SQLite em memória.
 
-## Tabelas do Banco de Dados e Relações
+## Como executar
 
-A aplicação utiliza PostgreSQL como banco de dados, gerenciado pelo SQLAlchemy. Abaixo estão as principais tabelas e suas relações:
+Requer [uv](https://docs.astral.sh/uv/).
 
-- **`PDFData`**:
-  - Armazena dados extraídos dos PDFs.
-  - Colunas principais: `id`, `codigo`, `descricao`, `qtd_emb`, `preco`, `importacao_id`.
-  - Relação: Cada `PDFData` está associado a uma `Importacao` através de `importacao_id`.
+```bash
+uv sync
+uv run python seed.py            # opcional: importa os PDFs de exemplo em data/
+uv run uvicorn app:app --reload
+```
 
-- **`Importacao`**:
-  - Representa as tabelas importadas a partir dos PDFs.
-  - Colunas principais: `id`, `apelido`, `data_referencia`.
-  - Relação: Uma `Importacao` pode ter vários registros na tabela `PDFData`. Também está relacionada a múltiplos `Carrinho`.
+Acesse <http://127.0.0.1:8000> (documentação automática da API em `/docs`).
 
-- **`Carrinho`**:
-  - Armazena itens que foram selecionados pelo usuário de uma tabela de importação.
-  - Colunas principais: `id`, `apelido`, `apelido_importacao`.
-  - Relação: Cada `Carrinho` está vinculado a uma `Importacao` por `apelido_importacao` e possui múltiplos `ItemCarrinho`.
+> Se o projeto estiver numa pasta do OneDrive e o `uv sync` falhar com erro de hardlink, use `UV_LINK_MODE=copy`.
 
-- **`ItemCarrinho`**:
-  - Armazena itens específicos dentro de um carrinho.
-  - Colunas principais: `id`, `descricao`, `preco`, `carrinho_id`.
-  - Relação: Cada `ItemCarrinho` está associado a um `Carrinho`.
+### Alternativa sem uv (pip)
 
-## Configuração e Execução
+```bash
+python -m venv .venv
+.venv\Scripts\activate          # Windows (Linux/macOS: source .venv/bin/activate)
+pip install -r requirements.txt
+python seed.py
+uvicorn app:app --reload
+```
 
-Para configurar e executar a aplicação, siga os passos abaixo:
+## Dependências
 
-1. **Clone o repositório:**
+A fonte de verdade é o `pyproject.toml` (versões travadas no `uv.lock`). O `requirements.txt` é apenas gerado a partir deles, para quem usar pip, e não deve ser editado à mão. Para regenerá-lo após alterar dependências:
 
-   git clone <https://github.com/seu-usuario/seu-repositorio.git>
+```bash
+uv export --no-hashes --no-dev --no-emit-project -o requirements.txt
+```
 
-   cd seu-repositorio
+## Testes
 
-2. **Instale as dependências**
-
-    pip install -r requirements.txt
-
-3. **Instale o PostgreSQL**
-
-    Certifique-se de que o PostgreSQL esteja instalado em sua máquina.
-
-4. **Configure o Banco de Dados**
-
-    Crie um banco de dados chamado "mydatabase".
-
-    Por padrão, a aplicação está configurada para conectar-se ao PostgreSQL com o usuário postgres e senha postgres. Se necessário, você pode alterar essas configurações no arquivo app.py
-
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost:5432/mydatabase'
-
-5. **Execute as migrações para configurar o banco de dados**
-
-    flask db upgrade
-
-6. **Inicie a aplicação**
-
-    flask run
-
-7. **Acesse aplicação em seu navegador**
-
-    <http://127.0.0.1:5000>
+```bash
+uv run pytest
+```

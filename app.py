@@ -1,50 +1,24 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from dotenv import load_dotenv
-import os
-from models import db
+from contextlib import asynccontextmanager
 
-# Carrega variáveis de ambiente do .env se existirem
-load_dotenv()
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
-app = Flask(__name__)
+import models  # noqa: F401  (registra as tabelas no metadata)
+from database import BASE_DIR, Base, engine
+from routes import router
 
 
-# Configuração para Azure
-if 'WEBSITE_HOSTNAME' not in os.environ:
-    # Desenvolvimento local, onde usaremos variáveis ​​de ambiente
-    print("Loading config.development and environment variables from .env.sample file.")
-    app.config.from_object('azureproject.development')
-    
-else:
-    # Production
-    print("Loading config.production.")
-    app.config.from_object('azureproject.production')
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(engine)
+    yield
 
-app.config.update(
-    SQLALCHEMY_DATABASE_URI=app.config.get('DATABASE_URI'),
-    SQLALCHEMY_TRACK_MODIFICATIONS=False,
-)
 
-'''
-# Configuração para localhost
-# Desenvolvimento local: usa variáveis de ambiente do arquivo .env
-print("Carregando configuração de desenvolvimento.")
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
+app = FastAPI(title="Gerenciador de PDFs", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+app.include_router(router)
 
-#Carregando a chave secreta do Flask para proteção de sessões e CSRF
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'defaultsecretkey')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-'''
+if __name__ == "__main__":
+    import uvicorn
 
-# Inicializa o banco de dados
-db.init_app(app)
-
-# Habilita comandos Flask-Migrate para migração do banco de dados
-migrate = Migrate(app, db)
-
-from routes import *
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)

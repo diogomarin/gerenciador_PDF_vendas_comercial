@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carregar PDF</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <h1>Selecione PDF para Upload</h1>
     
-    <form id="uploadForm" method="POST" action="{{ url_for('upload_pdf') }}">
+    <form id="uploadForm" method="POST" action="/upload_pdf">
         <input type="file" id="pdfFile" name="file" accept="application/pdf" required>
         <input type="text" id="apelido" name="apelido" placeholder="Apelido da Tabela" required>
         <input type="date" id="dataReferencia" name="data_referencia" required>
@@ -27,15 +27,15 @@
         <div style="color: green;">Success: File processed and data saved</div>
 
         <div>
-            <a href="{{ url_for('select_table') }}"><button>Selecionar Tabela</button></a>
+            <a href="/select_table"><button>Selecionar Tabela</button></a>
         </div>
         {% endif %}
     </div>
 
     <br>
 
-    <a href="{{ url_for('index') }}"><button>Voltar para Início</button></a>
+    <a href="/"><button>Voltar para Início</button></a>
 
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <script src="/static/main.js"></script>
 </body>
 </html>

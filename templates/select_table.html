@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tabelas Importadas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     {% if not importacao %}
     <h1>Selecionar Tabela Existente</h1>
 
     <!-- Formulário para Selecionar uma Tabela -->
-    <form method="POST" action="{{ url_for('select_table') }}">
+    <form method="POST" action="/select_table">
         <select id="importacao_id" name="importacao_id" required>
             <option value="">-- Selecione uma Tabela --</option>
             {% for imp in importacoes %}
@@ -27,7 +27,7 @@
     <h2>Itens da Tabela: {{ importacao.apelido }} ({{ importacao.data_referencia }})</h2>
 
     <!-- Formulário de busca -->
-    <form method="POST" action="{{ url_for('search_items') }}">
+    <form method="POST" action="/search_items">
         <input type="hidden" name="importacao_id" value="{{ importacao.id }}">
         <input type="text" name="search_query" placeholder="Buscar descrição..." required>
         <button type="submit">Buscar</button>
@@ -80,7 +80,7 @@
         </tbody>
     </table>
 
-    <form id="saveCartForm" method="POST" action="{{ url_for('save_cart') }}">
+    <form id="saveCartForm" method="POST" action="/save_cart">
         <input type="hidden" name="cart_items" id="cartItemsInput">
         <input type="hidden" name="apelido_importacao" value="{{ importacao.apelido }}">
         <label for="cartApelido">Apelido do Carrinho:</label>
@@ -90,8 +90,8 @@
     {% endif %}
 
     <br><br>
-    <a href="{{ url_for('index') }}"><button>Voltar para Início</button></a>
+    <a href="/"><button>Voltar para Início</button></a>
 
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <script src="/static/main.js"></script>
 </body>
 </html>
